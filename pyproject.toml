@@ -1,8 +1,28 @@
-[project]
-name = "support-ticket-openenv"
-version = "0.1.0"
-description = "OpenEnv Support Ticket Agent"
-requires-python = ">=3.10"
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
-[tool.openenv]
-env = "environment.py"
+[project]
+name = "support-ticket-agent"
+version = "1.0.0"
+description = "Real-world OpenEnv environment: AI agent triages customer support tickets by classifying department, assigning priority, and drafting replies."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "openenv-core>=0.2.0",
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.30.6",
+    "pydantic>=2.7.4",
+    "pandas>=2.2.2",
+    "openai>=1.51.0",
+    "httpx>=0.27.2",
+]
+
+[project.scripts]
+server = "server.app:start"
+
+[tool.hatch.build.targets.wheel]
+packages = ["server"]
+
+[tool.uv]
+dev-dependencies = []
