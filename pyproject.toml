@@ -1,0 +1,8 @@
+[project]
+name = "support-ticket-openenv"
+version = "0.1.0"
+description = "OpenEnv Support Ticket Agent"
+requires-python = ">=3.10"
+
+[tool.openenv]
+env = "environment.py"
