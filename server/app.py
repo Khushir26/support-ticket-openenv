@@ -1,9 +1,11 @@
 """
 server/app.py — Support Ticket Agent OpenEnv Server
 
-This is the required entry point for `openenv validate`.
-It re-exports the FastAPI app from the root main.py and provides
-the `start` function used by [project.scripts] server = "server.app:start".
+Required entry point for `openenv validate`.
+Rules:
+  - Function must be named `main` (not start)
+  - Must have if __name__ == '__main__': block
+  - pyproject.toml must have: server = "server.app:main"
 """
 from __future__ import annotations
 
@@ -16,10 +18,10 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # Re-export the FastAPI app from root main.py
 from main import app  # noqa: F401
 
-__all__ = ["app", "start"]
+__all__ = ["app", "main"]
 
 
-def start() -> None:
+def main() -> None:
     """Entry point called by `uv run server` and [project.scripts]."""
     import uvicorn
     uvicorn.run(
@@ -32,4 +34,4 @@ def start() -> None:
 
 
 if __name__ == "__main__":
-    start()
+    main()
