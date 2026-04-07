@@ -1,0 +1,23 @@
+{
+  "task1": {
+    "task_id": "task1",
+    "name": "Department Classification",
+    "difficulty": "easy",
+    "score": 1.0,
+    "num_tickets": 20
+  },
+  "task2": {
+    "task_id": "task2",
+    "name": "Classification + Priority",
+    "difficulty": "medium",
+    "score": 0.75,
+    "num_tickets": 20
+  },
+  "task3": {
+    "task_id": "task3",
+    "name": "Triage + Draft Reply",
+    "difficulty": "hard",
+    "score": 0.7848,
+    "num_tickets": 20
+  }
+}

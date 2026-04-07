@@ -1,0 +1,84 @@
+name: support-ticket-agent
+version: "1.0.0"
+description: >
+  Real-world customer support ticket triage environment.
+  An AI agent reads incoming support tickets and must classify the department,
+  assign priority, and draft a professional first reply.
+  Powered by the Tobi-Bueck/customer-support-tickets dataset (HuggingFace).
+
+tags:
+  - openenv
+  - support
+  - triage
+  - nlp
+  - classification
+
+author: "The Avengers"
+
+tasks:
+  - id: task1
+    name: "Department Classification"
+    description: "Classify the support ticket into the correct department (Easy)."
+    difficulty: easy
+    max_steps: 20
+    reward_range: [0.0, 1.0]
+
+  - id: task2
+    name: "Classification + Priority"
+    description: "Classify department AND assign priority 1/2/3 (Medium)."
+    difficulty: medium
+    max_steps: 20
+    reward_range: [0.0, 1.0]
+
+  - id: task3
+    name: "Triage + Draft Reply"
+    description: "Classify, assign priority, AND write a professional first reply (Hard)."
+    difficulty: hard
+    max_steps: 20
+    reward_range: [0.0, 1.0]
+
+observation:
+  type: object
+  fields:
+    ticket_id: string
+    subject: string
+    body: string
+    customer_name: string
+    task_id: string
+    step: integer
+    max_steps: integer
+    valid_departments: array
+    instructions: string
+
+action:
+  type: object
+  fields:
+    department:
+      type: string
+      options: [Technical, Billing, Product, IT, Returns, Sales, HR]
+    priority:
+      type: integer
+      options: [1, 2, 3]
+    reply:
+      type: string
+      description: "Required for task3 only"
+
+reward:
+  type: float
+  range: [0.0, 1.0]
+  description: >
+    Task1: binary department match (1.0 or 0.0).
+    Task2: weighted department (0.6) + priority (0.4).
+    Task3: weighted department (0.4) + priority (0.3) + reply quality (0.3).
+
+endpoints:
+  health: GET /health
+  reset:  POST /reset
+  step:   POST /step
+  state:  GET /state
+  tasks:  GET /tasks
+
+dataset:
+  name: "Tobi-Bueck/customer-support-tickets"
+  source: "https://huggingface.co/datasets/Tobi-Bueck/customer-support-tickets"
+  license: "open"

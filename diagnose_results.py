@@ -1,0 +1,5 @@
+# TASK 2 FAILURES
+# Task2 avg: 1.0000
+
+# TASK 3 FAILURES
+# Task3 avg: 0.8906

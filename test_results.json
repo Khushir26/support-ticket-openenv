@@ -1,0 +1,8 @@
+{
+  "Qwen/Qwen2.5-72B-Instruct": "Error code: 403 - {'error': 'This authentication method does not have sufficient permissions to call Inference Providers",
+  "mistralai/Mixtral-8x7B-Instruct-v0.1": "Error code: 403 - {'error': 'This authentication method does not have sufficient permissions to call Inference Providers",
+  "HuggingFaceH4/zephyr-7b-beta": "Error code: 403 - {'error': 'This authentication method does not have sufficient permissions to call Inference Providers",
+  "microsoft/Phi-3-mini-4k-instruct": "Error code: 403 - {'error': 'This authentication method does not have sufficient permissions to call Inference Providers",
+  "google/gemma-2-9b-it": "Error code: 403 - {'error': 'This authentication method does not have sufficient permissions to call Inference Providers",
+  "Qwen/Qwen2.5-7B-Instruct": "Error code: 403 - {'error': 'This authentication method does not have sufficient permissions to call Inference Providers"
+}
