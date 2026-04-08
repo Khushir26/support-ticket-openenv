@@ -1,14 +1,23 @@
+"""
+graders.py — Fixed graders for Support Ticket Agent OpenEnv environment.
+PHASE 2 FIX: Using 0.01-0.99 bounds to avoid any floating-point edge cases.
+All scores are STRICTLY between 0 and 1 (never 0.0 or 1.0).
+"""
 from __future__ import annotations
 import re
 from typing import Optional, Set
 
 VALID_DEPARTMENTS = ["Technical", "Billing", "Product", "IT", "Returns", "Sales", "HR"]
 
-_MIN_SCORE = 0.001
-_MAX_SCORE = 0.999
+# Use wider margins to be absolutely safe
+_MIN_SCORE = 0.01
+_MAX_SCORE = 0.99
+
 
 def _clamp(score: float) -> float:
-    return round(max(_MIN_SCORE, min(_MAX_SCORE, score)), 4)
+    """Clamp score strictly between 0 and 1 with safe margins."""
+    clamped = max(_MIN_SCORE, min(_MAX_SCORE, float(score)))
+    return round(clamped, 4)
 
 
 def _norm_dept(dept: str) -> str:
@@ -32,19 +41,20 @@ def _keywords(text: str) -> Set[str]:
 
 
 def _reply_quality(reply: str, gold_reply: str) -> float:
+    """Score reply quality - always returns value in (0, 1) range."""
     if not reply or not reply.strip():
-        return _clamp(_MIN_SCORE)
+        return _MIN_SCORE
 
     wc = len(reply.split())
 
     if wc < 5:
-        length_score = 0.05
+        length_score = 0.1
     elif wc < 15:
-        length_score = 0.3
+        length_score = 0.35
     elif wc <= 120:
-        length_score = 0.9
+        length_score = 0.85
     else:
-        length_score = 0.7
+        length_score = 0.65
 
     gold_kws = _keywords(gold_reply)
     pred_kws = _keywords(reply)
@@ -52,7 +62,8 @@ def _reply_quality(reply: str, gold_reply: str) -> float:
     if not gold_kws:
         overlap = 0.5
     else:
-        overlap = min(len(gold_kws & pred_kws) / len(gold_kws), 0.99)
+        # Cap at 0.95 to stay safely below 1.0
+        overlap = min(len(gold_kws & pred_kws) / len(gold_kws), 0.95)
 
     final = overlap * 0.7 + length_score * 0.3
     return _clamp(final)
@@ -61,17 +72,19 @@ def _reply_quality(reply: str, gold_reply: str) -> float:
 # ── TASK 1 ─────────────────────────────
 
 def grade_task1(pred_dept, gold_dept, step, max_steps):
+    """Grade task 1: Department classification only."""
     d_ok = _dept_ok(pred_dept, gold_dept)
 
-    dept_score = _clamp(0.999 if d_ok else 0.001)
+    # Use 0.95 for correct, 0.05 for wrong (safe margins)
+    dept_score = _clamp(0.95 if d_ok else 0.05)
 
-    score = _clamp(dept_score)
+    score = dept_score  # Task 1 is department only
 
     return {
-        "score": score,
+        "score": _clamp(score),
         "department_score": dept_score,
-        "priority_score": _clamp(0.001),
-        "reply_score": _clamp(0.001),
+        "priority_score": _clamp(0.5),  # Neutral score for unused field
+        "reply_score": _clamp(0.5),      # Neutral score for unused field
         "correct_department": gold_dept,
         "correct_priority": None,
         "feedback": f"Dept {'OK' if d_ok else 'WRONG'}"
@@ -81,11 +94,13 @@ def grade_task1(pred_dept, gold_dept, step, max_steps):
 # ── TASK 2 ─────────────────────────────
 
 def grade_task2(pred_dept, pred_prio, gold_dept, gold_prio, step, max_steps):
+    """Grade task 2: Department + Priority classification."""
     d_ok = _dept_ok(pred_dept, gold_dept)
     p_ok = _prio_ok(pred_prio, gold_prio)
 
-    dept_score = _clamp(0.999 if d_ok else 0.001)
-    prio_score = _clamp(0.999 if p_ok else 0.001)
+    # Use 0.95 for correct, 0.05 for wrong
+    dept_score = _clamp(0.95 if d_ok else 0.05)
+    prio_score = _clamp(0.95 if p_ok else 0.05)
 
     raw_score = dept_score * 0.6 + prio_score * 0.4
     score = _clamp(raw_score)
@@ -94,10 +109,10 @@ def grade_task2(pred_dept, pred_prio, gold_dept, gold_prio, step, max_steps):
         "score": score,
         "department_score": dept_score,
         "priority_score": prio_score,
-        "reply_score": _clamp(0.001),
+        "reply_score": _clamp(0.5),  # Neutral score for unused field
         "correct_department": gold_dept,
         "correct_priority": int(gold_prio),
-        "feedback": f"Dept {d_ok}, Prio {p_ok}"
+        "feedback": f"Dept {'OK' if d_ok else 'WRONG'}, Prio {'OK' if p_ok else 'WRONG'}"
     }
 
 
@@ -106,13 +121,14 @@ def grade_task2(pred_dept, pred_prio, gold_dept, gold_prio, step, max_steps):
 def grade_task3(pred_dept, pred_prio, pred_reply,
                 gold_dept, gold_prio, gold_reply,
                 step, max_steps):
-
+    """Grade task 3: Department + Priority + Reply quality."""
     d_ok = _dept_ok(pred_dept, gold_dept)
     p_ok = _prio_ok(pred_prio, gold_prio)
 
-    dept_score = _clamp(0.999 if d_ok else 0.001)
-    prio_score = _clamp(0.999 if p_ok else 0.001)
-    reply_score = _clamp(_reply_quality(pred_reply or "", gold_reply))
+    # Use 0.95 for correct, 0.05 for wrong
+    dept_score = _clamp(0.95 if d_ok else 0.05)
+    prio_score = _clamp(0.95 if p_ok else 0.05)
+    reply_score = _reply_quality(pred_reply or "", gold_reply)
 
     raw_score = dept_score * 0.4 + prio_score * 0.3 + reply_score * 0.3
     score = _clamp(raw_score)
@@ -124,5 +140,5 @@ def grade_task3(pred_dept, pred_prio, pred_reply,
         "reply_score": reply_score,
         "correct_department": gold_dept,
         "correct_priority": int(gold_prio),
-        "feedback": f"Dept {d_ok}, Prio {p_ok}, Reply {reply_score:.3f}"
+        "feedback": f"Dept {'OK' if d_ok else 'WRONG'}, Prio {'OK' if p_ok else 'WRONG'}, Reply {reply_score:.3f}"
     }
