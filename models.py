@@ -33,10 +33,10 @@ class TicketAction(BaseModel):
 
 # ── Reward: what the environment RETURNS after each step ──────────────────
 class TicketReward(BaseModel):
-    score: float            = Field(..., ge=0.0, le=1.0)
-    department_score: float = Field(..., ge=0.0, le=1.0)
-    priority_score: float   = Field(..., ge=0.0, le=1.0)
-    reply_score: float      = Field(..., ge=0.0, le=1.0)
+    score: float            = Field(..., gt=0.0, lt=1.0)
+    department_score: float = Field(..., gt=0.0, lt=1.0)
+    priority_score: float   = Field(..., gt=0.0, lt=1.0)
+    reply_score: float      = Field(..., gt=0.0, lt=1.0)
     feedback: str
     done: bool
     correct_department: Optional[str] = None
