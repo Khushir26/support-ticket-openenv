@@ -1,10 +1,13 @@
 """
 graders.py — Deterministic graders for all 3 tasks.
 
-Scoring design (NO step penalty — max_steps=1 per ticket):
-  Task 1 — Department only            binary  0.0 or 1.0
+PHASE 2 FIX: scores must be strictly between 0 and 1 (not 0.0, not 1.0).
+All scores are clamped to [0.001, 0.999].
+
+Scoring design (NO step penalty):
+  Task 1 — Department only            binary  ~0.001 or ~0.999
   Task 2 — Dept 60% + Priority 40%    partial credit
-  Task 3 — Dept 40% + Prio 30%        partial credit
+  Task 3 — Dept 40% + Prio 30%
            + Reply quality 30%
 
 Reply quality:
@@ -12,7 +15,7 @@ Reply quality:
   length appropriateness     25%
   professionalism signals    20%
 
-100% deterministic. Scores always in [0.0, 1.0].
+100% deterministic. Scores always strictly in (0.0, 1.0).
 """
 from __future__ import annotations
 
@@ -54,6 +57,15 @@ _STOPWORDS: Set[str] = {
     "reach", "shortly", "soon", "here", "team", "support", "name",
 }
 
+# ── Score clamping — CRITICAL for Phase 2 ─────────────────────────────────
+_MIN_SCORE = 0.001
+_MAX_SCORE = 0.999
+
+
+def _clamp(score: float) -> float:
+    """Clamp to strictly open interval (0, 1) as required by Phase 2."""
+    return round(max(_MIN_SCORE, min(_MAX_SCORE, score)), 4)
+
 
 def _norm_dept(dept: str) -> str:
     return dept.strip().lower()
@@ -80,20 +92,20 @@ def _keywords(text: str) -> Set[str]:
 
 
 def _reply_quality(reply: str, gold_reply: str) -> float:
-    """Score reply quality 0.0-1.0 via keyword overlap + length + professionalism."""
+    """Score reply quality in (0, 1) via keyword overlap + length + professionalism."""
     if not reply or not reply.strip():
-        return 0.0
+        return _MIN_SCORE
 
     words   = reply.split()
     wc      = len(words)
     r_lower = reply.lower()
 
     # Length: optimal 30-120 words
-    if   wc < 5:      length_score = 0.05
-    elif wc < 15:     length_score = 0.35
-    elif wc <= 120:   length_score = 1.00
-    elif wc <= 200:   length_score = 0.85
-    else:             length_score = 0.65
+    if   wc < 5:     length_score = 0.05
+    elif wc < 15:    length_score = 0.35
+    elif wc <= 120:  length_score = 0.99
+    elif wc <= 200:  length_score = 0.85
+    else:            length_score = 0.65
 
     # Professionalism signals
     prof = 0.0
@@ -108,10 +120,10 @@ def _reply_quality(reply: str, gold_reply: str) -> float:
                                    "business day", "hours", "apologize",
                                    "apologise", "sorry", "within"]):
         prof += 0.25
-    prof = min(prof, 1.0)
+    prof = min(prof, 0.99)
 
     if not gold_reply or not gold_reply.strip():
-        return round(length_score * 0.55 + prof * 0.45, 4)
+        return _clamp(length_score * 0.55 + prof * 0.45)
 
     gold_kws = _keywords(gold_reply)
     pred_kws = _keywords(reply)
@@ -120,28 +132,31 @@ def _reply_quality(reply: str, gold_reply: str) -> float:
         overlap = 0.55
     else:
         matched = len(gold_kws & pred_kws)
-        overlap = min(matched / len(gold_kws), 1.0)
+        overlap = min(matched / len(gold_kws), 0.99)
 
     final = overlap * 0.55 + length_score * 0.25 + prof * 0.20
-    return round(min(final, 1.0), 4)
+    return _clamp(final)
 
 
 # ── Task 1 ────────────────────────────────────────────────────────────────
 
 def grade_task1(pred_dept: str, gold_dept: str, step: int, max_steps: int) -> dict:
-    """Binary: 1.0 correct department, 0.0 wrong. No step penalty."""
+    """
+    Department classification only.
+    Correct → 0.999, Wrong → 0.001  (strictly between 0 and 1).
+    """
     d_ok  = _dept_ok(pred_dept, gold_dept)
-    score = 1.0 if d_ok else 0.0
+    score = _clamp(0.999 if d_ok else 0.001)
     return {
-        "score":              round(score, 4),
-        "department_score":   float(d_ok),
-        "priority_score":     0.0,
-        "reply_score":        0.0,
+        "score":              score,
+        "department_score":   0.999 if d_ok else 0.001,
+        "priority_score":     0.001,
+        "reply_score":        0.001,
         "correct_department": gold_dept,
         "correct_priority":   None,
         "feedback": (
             f"Dept: {'CORRECT' if d_ok else 'WRONG'} "
-            f"('{pred_dept}' vs '{gold_dept}'). Score={score:.2f}"
+            f"('{pred_dept}' vs '{gold_dept}'). Score={score:.4f}"
         ),
     }
 
@@ -150,24 +165,28 @@ def grade_task1(pred_dept: str, gold_dept: str, step: int, max_steps: int) -> di
 
 def grade_task2(pred_dept: str, pred_prio, gold_dept: str, gold_prio,
                 step: int, max_steps: int) -> dict:
-    """Dept (60%) + Priority (40%). No step penalty."""
+    """
+    Dept (60%) + Priority (40%). Partial credit.
+    All component scores clamped to (0, 1).
+    """
     d_ok       = _dept_ok(pred_dept, gold_dept)
     p_ok       = _prio_ok(pred_prio, gold_prio)
-    dept_score = 1.0 if d_ok else 0.0
-    prio_score = 1.0 if p_ok else 0.0
-    score      = round(dept_score * 0.6 + prio_score * 0.4, 4)
+    dept_score = 0.999 if d_ok else 0.001
+    prio_score = 0.999 if p_ok else 0.001
+    raw_score  = dept_score * 0.6 + prio_score * 0.4
+    score      = _clamp(raw_score)
     return {
         "score":              score,
         "department_score":   dept_score,
         "priority_score":     prio_score,
-        "reply_score":        0.0,
+        "reply_score":        0.001,
         "correct_department": gold_dept,
         "correct_priority":   int(gold_prio),
         "feedback": (
             f"Dept: {'OK' if d_ok else 'WRONG'} ('{pred_dept}' vs '{gold_dept}') "
-            f"×0.6={dept_score*0.6:.2f}, "
+            f"×0.6={dept_score*0.6:.4f}, "
             f"Prio: {'OK' if p_ok else 'WRONG'} ({pred_prio} vs {gold_prio}) "
-            f"×0.4={prio_score*0.4:.2f}. Score={score:.2f}"
+            f"×0.4={prio_score*0.4:.4f}. Score={score:.4f}"
         ),
     }
 
@@ -177,23 +196,27 @@ def grade_task2(pred_dept: str, pred_prio, gold_dept: str, gold_prio,
 def grade_task3(pred_dept: str, pred_prio, pred_reply: Optional[str],
                 gold_dept: str, gold_prio, gold_reply: str,
                 step: int, max_steps: int) -> dict:
-    """Dept (40%) + Priority (30%) + Reply quality (30%). No step penalty."""
+    """
+    Dept (40%) + Priority (30%) + Reply quality (30%).
+    All scores strictly in (0, 1).
+    """
     d_ok       = _dept_ok(pred_dept, gold_dept)
     p_ok       = _prio_ok(pred_prio, gold_prio)
     r_score    = _reply_quality(pred_reply or "", gold_reply)
-    dept_score = 1.0 if d_ok else 0.0
-    prio_score = 1.0 if p_ok else 0.0
-    score      = round(dept_score * 0.4 + prio_score * 0.3 + r_score * 0.3, 4)
+    dept_score = 0.999 if d_ok else 0.001
+    prio_score = 0.999 if p_ok else 0.001
+    raw_score  = dept_score * 0.4 + prio_score * 0.3 + r_score * 0.3
+    score      = _clamp(raw_score)
     return {
         "score":              score,
         "department_score":   dept_score,
         "priority_score":     prio_score,
-        "reply_score":        round(r_score, 4),
+        "reply_score":        r_score,
         "correct_department": gold_dept,
         "correct_priority":   int(gold_prio),
         "feedback": (
-            f"Dept={'CORRECT' if d_ok else 'WRONG'} ×0.40={dept_score*0.40:.2f}, "
-            f"Prio={'OK' if p_ok else 'WRONG'} ×0.30={prio_score*0.30:.2f}, "
-            f"Reply={r_score:.3f} ×0.30={r_score*0.30:.2f}. Score={score:.2f}"
+            f"Dept={'CORRECT' if d_ok else 'WRONG'} ×0.40={dept_score*0.40:.4f}, "
+            f"Prio={'OK' if p_ok else 'WRONG'} ×0.30={prio_score*0.30:.4f}, "
+            f"Reply={r_score:.4f} ×0.30={r_score*0.30:.4f}. Score={score:.4f}"
         ),
     }
