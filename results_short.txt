@@ -1,6 +1,1 @@
-FAIL: Qwen/Qwen2.5-72B-Instruct
-FAIL: mistralai/Mixtral-8x7B-Instruct-v0.1
-FAIL: HuggingFaceH4/zephyr-7b-beta
-FAIL: microsoft/Phi-3-mini-4k-instruct
-FAIL: google/gemma-2-9b-it
-FAIL: Qwen/Qwen2.5-7B-Instruct
+
